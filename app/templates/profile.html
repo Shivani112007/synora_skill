@@ -1,0 +1,18 @@
+<div class="page"><div class="container">
+<div class="page-title"><div><span class="eyebrow">Digital portfolio</span><h1 style="margin-top:10px">My Portfolio</h1><p class="muted">Build a professional snapshot of what you can do.</p></div><div class="badge">{{ completion }}% complete</div></div>
+<div class="grid-2">
+<div>
+{% for kind, label, icon in [('projects','Projects','⌁'),('certificates','Certifications','◇'),('achievements','Achievements','★'),('education','Education','▣')] %}
+<div class="card" style="margin-bottom:16px"><div class="section-head"><div><h3>{{ icon }} {{ label }}</h3><p>{{ "Showcase your work and experience." if kind=="projects" else "Add relevant " + label.lower() + "." }}</p></div>
+<form method="post" action="{{ url_for('portfolio_add', kind=kind) }}" style="display:flex;gap:7px"><input name="value" required placeholder="Add {{ label[:-1] if label.endswith('s') else label }}..." style="border:1px solid var(--line);border-radius:9px;padding:8px 10px"><button class="btn btn-primary btn-sm">Add</button></form></div>
+{% if u[kind] %}<div class="list">{% for item in u[kind] %}<div class="list-item"><span>{{ item }}</span><form method="post" action="{{ url_for('portfolio_delete', kind=kind, index=loop.index0) }}" onsubmit="return confirm('Remove this item?')"><button class="btn btn-danger btn-sm">Remove</button></form></div>{% endfor %}</div>{% else %}<div class="empty"><div class="empty-icon">{{ icon }}</div><h3>No {{ label|lower }} yet</h3><p>Make your portfolio stronger by adding your first item.</p></div>{% endif %}</div>
+{% endfor %}
+</div>
+<div>
+<div class="card" style="margin-bottom:16px"><h3>Profile details</h3><form method="post" action="{{ url_for('profile') }}">
+<div class="field"><label>Full name</label><input name="name" value="{{ u.name }}" required></div>
+<div class="field"><label>Skills <span class="muted">(comma separated)</span></label><input name="skills" value="{{ ', '.join(u.skills) }}" placeholder="Python, React, AWS"></div>
+<div class="field"><label>Interests <span class="muted">(comma separated)</span></label><input name="interests" value="{{ ', '.join(u.interests) }}" placeholder="Cloud Computing, Web Development"></div>
+<div class="form-actions"><button class="btn btn-primary">Save profile</button></div></form></div>
+<div class="card"><h3>Interests</h3>{% if u.interests %}<div class="tags">{% for i in u.interests %}<span class="tag">{{ i }}</span>{% endfor %}</div>{% else %}<div class="empty"><div class="empty-icon">◎</div><h3>No interests yet</h3><p>Add areas you want to explore.</p></div>{% endif %}</div>
+</div></div></div>

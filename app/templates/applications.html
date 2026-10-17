@@ -1,0 +1,72 @@
+<div class="page"><div class="container">
+<div class="page-title">
+  <div>
+    <span class="eyebrow">Application tracker</span>
+    <h1 style="margin-top:10px">Applications</h1>
+    <p class="muted">Keep track of where you are in your opportunity journey.</p>
+  </div>
+</div>
+
+<div class="card"><div class="table-wrap">
+<table class="table">
+<thead><tr>
+  <th>Opportunity</th><th>Company</th>
+  {% if u.role == 'admin' %}<th>Student</th>{% endif %}
+  <th>Status</th>
+  {% if u.role == 'admin' %}<th>Update</th>{% else %}<th>Actions</th>{% endif %}
+</tr></thead>
+<tbody>
+{% for a in apps %}
+<tr>
+  <td><b>{{ titles.get(a.opp, "Opportunity") }}</b></td>
+  <td>{{ a.company or companies.get(a.opp, "Unknown") }}</td>
+  {% if u.role == 'admin' %}<td>{{ a.student }}</td>{% endif %}
+  <td><span class="badge">{{ a.status }}</span></td>
+  {% if u.role == 'admin' %}
+  <td>
+    <form method="post" style="display:flex;gap:7px">
+      <input type="hidden" name="id" value="{{ a.id }}">
+      <select name="status">
+        {% for s in ['Submitted','Under Review','Shortlisted','Accepted','Rejected','Cancelled'] %}
+        <option {% if a.status == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-soft btn-sm">Update</button>
+    </form>
+  </td>
+  {% else %}
+  <td>
+    {% if a.status == 'Cancelled' %}
+      {% if a.opp in active_opps %}
+      <form method="post" action="{{ url_for('apply', oid=a.opp) }}">
+        <button class="btn btn-primary btn-sm">Reapply</button>
+      </form>
+      {% else %}
+      <span class="muted">Opportunity unavailable</span>
+      {% endif %}
+    {% elif a.status == 'Submitted' %}
+      <form method="post"
+            action="{{ url_for('cancel_application', app_id=a.id) }}"
+            onsubmit="return confirm('Cancel this application?')">
+        <button class="btn btn-danger btn-sm">Cancel application</button>
+      </form>
+    {% else %}
+      <span class="muted">No actions available</span>
+    {% endif %}
+  </td>
+  {% endif %}
+</tr>
+{% else %}
+<tr><td colspan="5">
+  <div class="empty">
+    <div class="empty-icon">✓</div>
+    <h3>No applications yet</h3>
+    <p>When you apply to an opportunity, it will appear here.</p>
+    {% if u.role != 'admin' %}
+    <a class="btn btn-primary" href="{{ url_for('opportunities') }}">Explore opportunities</a>
+    {% endif %}
+  </div>
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div></div></div></div>

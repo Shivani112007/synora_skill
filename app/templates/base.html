@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title or "SYNORA" }} · SkillSync</title>
+<meta name="description" content="Build your profile. Showcase your skills. Discover your opportunities.">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head><body>
+<header class="nav"><div class="container nav-in">
+<a class="brand" href="{{ url_for('home') }}"><span class="logo"></span><span>SYNORA</span></a>
+{% if u %}
+<nav class="navlinks">
+<a href="{{ url_for('dashboard') }}">Dashboard</a><a href="{{ url_for('profile') }}">Portfolio</a>
+<a href="{{ url_for('documents') }}">My Documents</a>
+<a href="{{ url_for('opportunities') }}">Opportunities</a><a href="{{ url_for('applications') }}">Applications</a>
+{% if u.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+<a href="{{ url_for('logout') }}">Logout</a>
+</nav>
+<a class="user-pill" href="{{ url_for('profile') }}"><span class="avatar">{{ u.name[:1]|upper }}</span>{{ u.name }}</a>
+{% else %}
+<nav class="navlinks"><a href="{{ url_for('home') }}">Home</a><a href="{{ url_for('login') }}">Login</a><a class="btn btn-primary btn-sm" href="{{ url_for('register') }}">Get Started</a></nav>
+{% endif %}
+</div></header>
+{% for m in get_flashed_messages() %}<div class="container"><div class="flash">✓ {{ m }}</div></div>{% endfor %}
+{{ body|safe }}
+<footer class="footer"><div class="container">© 2026 SYNORA · SkillSync · Build your profile. Showcase your skills. Discover your opportunities.</div></footer>
+</body></html>

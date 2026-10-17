@@ -1,0 +1,88 @@
+<div class="page"><div class="container">
+<div class="page-title"><div><span class="eyebrow">Administration</span><h1 style="margin-top:10px">Control Center</h1><p class="muted">Manage students, opportunities and platform skills.</p></div></div>
+
+<div class="admin-grid">
+<div class="card stat"><div class="label">Total Students</div><div class="value">{{ stats.students }}</div></div>
+<div class="card stat"><div class="label">Total Opportunities</div><div class="value">{{ stats.opportunities }}</div></div>
+<div class="card stat"><div class="label">Total Skills</div><div class="value">{{ stats.skills }}</div></div>
+<div class="card stat"><div class="label">Active Opportunities</div><div class="value">{{ stats.active }}</div></div>
+</div>
+
+<div class="grid-2">
+<div class="card">
+<h3>Post an opportunity</h3>
+<form method="post">
+<div class="form-grid">
+<div class="field"><label>Title</label><input name="title" required placeholder="Frontend Developer Internship"></div>
+<div class="field"><label>Organization</label><input name="org" required placeholder="Company / Team"></div>
+<div class="field"><label>Category</label><select name="type"><option>Internship</option><option>Hackathon</option><option>Workshop</option><option>Project</option></select></div>
+<div class="field"><label>Mode / Location</label><input name="location" placeholder="Remote | Chennai"></div>
+<div class="field"><label>Deadline</label><input name="deadline" placeholder="30 Nov 2026"></div>
+<div class="field"><label>Duration</label><input name="duration" placeholder="3 Months"></div>
+<div class="field full"><label>Required skills</label><input name="skills" required placeholder="React, JavaScript, HTML, CSS"></div>
+</div>
+<div class="form-actions"><button class="btn btn-primary">Publish opportunity</button></div>
+</form>
+</div>
+
+<div class="card">
+<h3>Recent students</h3>
+{% if students %}
+<div class="list">
+{% for s in students[:7] %}
+<div class="list-item">
+<span><strong>{{ s.name }}</strong><small>{{ s.id }}</small></span>
+<span class="badge">{{ s.skills|length }} skills</span>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty"><h3>No students yet</h3><p>Registered students will appear here.</p></div>
+{% endif %}
+</div>
+</div>
+
+<div class="card" style="margin-top:18px">
+<h3>Opportunity management</h3>
+<div class="table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>Opportunity</th>
+<th>Organization</th>
+<th>Category</th>
+<th>Skills</th>
+<th>Deadline</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for o in ops %}
+<tr>
+<td><b>{{ o.title }}</b></td>
+<td>{{ o.org }}</td>
+<td><span class="badge">{{ o.type }}</span></td>
+<td>{{ ', '.join(o.skills) }}</td>
+<td>{{ o.deadline or "Open" }}</td>
+<td>
+<div style="display:flex;gap:7px;flex-wrap:wrap">
+<a class="btn btn-soft btn-sm"
+   href="{{ url_for('edit_opportunity', oid=o.id) }}">Edit</a>
+
+<form method="post"
+      action="{{ url_for('delete_opportunity', oid=o.id) }}"
+      onsubmit="return confirm('Remove this opportunity from student listings? Existing application records will be preserved.')">
+<button type="submit" class="btn btn-danger btn-sm">Delete</button>
+</form>
+</div>
+</td>
+</tr>
+{% else %}
+<tr><td colspan="6">No opportunities posted yet.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+
+</div></div>

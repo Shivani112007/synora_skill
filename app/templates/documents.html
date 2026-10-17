@@ -1,0 +1,99 @@
+<div class="page">
+  <div class="container">
+    <div class="page-title">
+      <div>
+        <span class="eyebrow">Personal library</span>
+        <h1 style="margin-top:10px">My Documents</h1>
+        <p class="muted">
+          Upload and manage your resumes, certificates and academic documents.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Upload a document</h3>
+        <p class="muted">PDF, DOCX, JPG or PNG · Maximum 10 MB</p>
+
+        <form method="post"
+              action="{{ url_for('documents') }}"
+              enctype="multipart/form-data">
+          <div class="field">
+            <label>Document name</label>
+            <input name="label" maxlength="100"
+                   placeholder="e.g. Resume 2026">
+          </div>
+
+          <div class="field" style="margin-top:14px">
+            <label>Document type</label>
+            <select name="category" required>
+              <option value="Resume">Resume</option>
+              <option value="Certificate">Certificate</option>
+              <option value="Academic Record">Academic Record</option>
+              <option value="Project">Project Document</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top:14px">
+            <label>Choose file</label>
+            <input type="file" name="document"
+                   accept=".pdf,.docx,.jpg,.jpeg,.png" required>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary">Upload document</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Your document library</h3>
+        <div class="stat">
+          <div class="label">Total documents</div>
+          <div class="value">{{ documents|length }}</div>
+        </div>
+        <p class="muted">
+          Your documents are stored privately and associated with your account.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>Uploaded documents</h3>
+
+      {% if documents %}
+        <div class="list">
+          {% for doc in documents %}
+            <div class="list-item">
+              <div style="min-width:0">
+                <strong>{{ doc.label }}</strong>
+                <small>
+                  {{ doc.category }} · {{ doc.filename }}
+                </small>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <a class="btn btn-soft btn-sm"
+                   href="{{ url_for('document_download', doc_id=doc.id) }}">
+                  Download
+                </a>
+                <form method="post"
+                      action="{{ url_for('document_delete', doc_id=doc.id) }}"
+                      onsubmit="return confirm('Delete this document?')">
+                  <button class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">▤</div>
+          <h3>No documents uploaded yet</h3>
+          <p>Your uploaded resumes and certificates will appear here.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

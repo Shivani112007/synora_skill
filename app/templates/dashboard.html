@@ -1,0 +1,22 @@
+<div class="page"><div class="container">
+<div class="page-title"><div><span class="eyebrow">Student workspace</span><h1 style="margin-top:10px">Welcome back, {{ u.name.split(' ')[0] }} 👋</h1><p class="muted">Keep your profile fresh and discover opportunities that match your strengths.</p></div><a class="btn btn-primary" href="{{ url_for('profile') }}">Edit Portfolio</a></div>
+<div class="grid" style="margin-bottom:18px">
+<div class="card stat"><div class="label">Profile completion</div><div class="value">{{ completion }}%</div><div class="progress" style="margin-top:10px"><i style="width:{{ completion }}%"></i></div></div>
+<div class="card stat"><div class="label">Skills</div><div class="value">{{ u.skills|length }}</div><div class="sub">Skills in your profile</div></div>
+<div class="card stat"><div class="label">Applications</div><div class="value">{{ application_count }}</div><div class="sub">Opportunities you applied to</div></div>
+</div>
+<div class="grid-2">
+<div class="card"><h3>Profile overview</h3><div class="profile-head"><div class="big-avatar">{{ u.name[:1]|upper }}</div><div><h2>{{ u.name }}</h2><p>{{ u.education[0] if u.education else "Add your education to complete your profile." }}</p></div></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h4>Skills overview</h4>
+{% if u.skills %}<div class="tags">{% for s in u.skills %}<span class="tag brand">{{ s }}</span>{% endfor %}</div>{% else %}<div class="empty"><div class="empty-icon">✦</div><h3>No skills yet</h3><p>Add your strongest skills to improve opportunity matching.</p><a class="btn btn-soft btn-sm" href="{{ url_for('profile') }}">Add Skills</a></div>{% endif %}
+</div>
+<div class="card"><h3>Quick actions</h3><div class="list">
+<a class="list-item" href="{{ url_for('profile') }}"><span><strong>✎ Update portfolio</strong><small>Keep your profile current</small></span>→</a>
+<a class="list-item" href="{{ url_for('opportunities') }}"><span><strong>⌕ Find opportunities</strong><small>Explore your skill matches</small></span>→</a>
+<a class="list-item" href="{{ url_for('applications') }}"><span><strong>✓ Track applications</strong><small>See your application status</small></span>→</a>
+</div></div>
+</div>
+<div class="card" style="margin-top:18px"><div class="section-head"><div><h3>Recommended opportunities</h3><p>Sorted by your current skill match.</p></div><a class="btn btn-soft btn-sm" href="{{ url_for('opportunities') }}">View all</a></div>
+<div class="grid">{% for o in recommended[:3] %}<div class="card opp" style="box-shadow:none"><div class="opp-top"><div><div class="opp-title">{{ o.title }}</div><div class="org">{{ o.org }}</div></div><div class="match"><b>{{ o.score }}%</b><small>match</small></div></div><div class="tags">{% for s in o.skills[:4] %}<span class="tag">{{ s }}</span>{% endfor %}</div><div class="bar"><i style="width:{{ o.score }}%"></i></div></div>{% else %}<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⌁</div><h3>No opportunities yet</h3><p>New opportunities will appear here when they are posted.</p></div>{% endfor %}</div>
+</div>
+</div></div>

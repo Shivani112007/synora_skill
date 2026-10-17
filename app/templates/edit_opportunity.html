@@ -1,0 +1,52 @@
+<div class="page"><div class="container">
+  <div class="page-title">
+    <div>
+      <span class="eyebrow">Administration</span>
+      <h1 style="margin-top:10px">Edit Opportunity</h1>
+      <p class="muted">Update the opportunity details.</p>
+    </div>
+    <a class="btn btn-soft" href="{{ url_for('admin') }}">Cancel</a>
+  </div>
+
+  <div class="card form-card">
+    <form method="post">
+      <div class="form-grid">
+        <div class="field">
+          <label>Title</label>
+          <input name="title" value="{{ o.title }}" required>
+        </div>
+        <div class="field">
+          <label>Organization</label>
+          <input name="org" value="{{ o.org }}" required>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select name="type">
+            {% for t in ['Internship','Hackathon','Workshop','Project'] %}
+              <option value="{{ t }}" {% if o.type == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Mode / Location</label>
+          <input name="location" value="{{ o.location }}">
+        </div>
+        <div class="field">
+          <label>Deadline</label>
+          <input name="deadline" value="{{ o.deadline }}">
+        </div>
+        <div class="field">
+          <label>Duration</label>
+          <input name="duration" value="{{ o.duration }}">
+        </div>
+        <div class="field full">
+          <label>Required skills (comma separated)</label>
+          <input name="skills" value="{{ ', '.join(o.skills) }}" required>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div></div>
