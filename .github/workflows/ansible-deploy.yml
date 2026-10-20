@@ -1,0 +1,85 @@
+
+name: Synora Ansible Deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synora-ansible-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Synora with Ansible
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+
+    steps:
+      # 1. Download repository code
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. Install Ansible
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --user ansible
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # 3. Configure SSH authentication
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/synora_ec2"
+          chmod 600 "$HOME/.ssh/synora_ec2"
+
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_USER" ]; then
+            echo "ERROR: EC2_HOST or EC2_USER secret is missing."
+            exit 1
+          fi
+
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "ERROR: EC2_SSH_KEY secret is missing."
+            exit 1
+          fi
+
+          ssh-keyscan -H "$EC2_HOST" >> "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      # 4. Create inventory from GitHub Secrets
+      - name: Configure Ansible inventory
+        run: |
+          cat > ansible/ci-inventory.ini <<EOF
+          [synora_servers]
+          synora_ec2 ansible_host=${EC2_HOST} ansible_user=${EC2_USER} ansible_python_interpreter=/usr/bin/python3 ansible_ssh_private_key_file=$HOME/.ssh/synora_ec2
+          EOF
+
+      # 5. Verify SSH and Ansible connectivity
+      - name: Test Ansible connection
+        run: |
+          ansible synora_servers \
+            -i ansible/ci-inventory.ini \
+            -m ansible.builtin.ping
+
+      # 6. Run the Ansible playbook
+      - name: Deploy Synora services
+        run: |
+          ansible-playbook \
+            -i ansible/ci-inventory.ini \
+            ansible/playbook.yml
+
+      # 7. Report deployment result
+      - name: Deployment completed
+        run: echo "Ansible workflow completed successfully."
