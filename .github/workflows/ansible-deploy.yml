@@ -2,6 +2,9 @@
 name: Synora Ansible Deployment
 
 on:
+  push:
+    branches:
+      - ansible-scm
   workflow_dispatch:
 
 permissions:
@@ -14,7 +17,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy Synora with Ansible
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
 
     env:
@@ -22,20 +25,15 @@ jobs:
       EC2_USER: ${{ secrets.EC2_USER }}
 
     steps:
-      # 1. Download repository code
+      # 1. Checkout repository code
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # 2. Install Ansible
-      - name: Install Ansible
-        run: |
-          python3 -m pip install --user ansible
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # 3. Validate required secrets
+      # 2. Verify required secrets
       - name: Validate SSH secrets
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -56,55 +54,52 @@ jobs:
 
           echo "Required SSH secrets are present."
 
+      # 3. Install Ansible if it is not already available
+      - name: Install Ansible
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! command -v ansible-playbook >/dev/null 2>&1; then
+            if command -v dnf >/dev/null 2>&1; then
+              sudo dnf install -y python3 python3-pip
+            elif command -v yum >/dev/null 2>&1; then
+              sudo yum install -y python3 python3-pip
+            else
+              echo "ERROR: Install Python and pip for this runner OS."
+              exit 1
+            fi
+
+            python3 -m pip install --user ansible
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.local/bin:$PATH"
+          fi
+
+          ansible --version
+
       # 4. Configure SSH authentication
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+        shell: bash
         run: |
           set -euo pipefail
 
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
 
-          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/synora_ec2"
+          printf '%s\n' "$SSH_PRIVATE_KEY" \
+            > "$HOME/.ssh/synora_ec2"
           chmod 600 "$HOME/.ssh/synora_ec2"
 
-          # Check that the private key can be read.
           ssh-keygen -y -f "$HOME/.ssh/synora_ec2" \
             > /dev/null
 
           echo "SSH private key format is valid."
 
-      # 5. Check EC2 SSH port reachability
-      - name: Check EC2 SSH connectivity
-        run: |
-          set -euo pipefail
-
-          echo "Checking SSH port 22 on EC2..."
-
-          if ! timeout 10 bash -c \
-            'echo > /dev/tcp/$1/22' _ "$EC2_HOST"; then
-            echo "ERROR: EC2 port 22 is unreachable."
-            echo "Check the EC2 security group and network access."
-            exit 1
-          fi
-
-          echo "EC2 SSH port is reachable."
-
-      # 6. Verify EC2 host key
-      # For production, replace this with a trusted, pinned host key.
-      - name: Configure known hosts
-        run: |
-          set -euo pipefail
-
-          ssh-keyscan -T 10 -H "$EC2_HOST" \
-            >> "$HOME/.ssh/known_hosts"
-
-          test -s "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-      # 7. Create CI inventory
+      # 5. Configure Ansible inventory
       - name: Configure Ansible inventory
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -113,8 +108,9 @@ jobs:
           synora_ec2 ansible_host=${EC2_HOST} ansible_user=${EC2_USER} ansible_python_interpreter=/usr/bin/python3 ansible_ssh_private_key_file=$HOME/.ssh/synora_ec2
           EOF
 
-      # 8. Verify SSH and Ansible connectivity
+      # 6. Test the Ansible connection
       - name: Test Ansible connection
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -122,8 +118,9 @@ jobs:
             -i ansible/ci-inventory.ini \
             -m ansible.builtin.ping
 
-      # 9. Run the Ansible playbook
+      # 7. Run the Ansible playbook
       - name: Deploy Synora services
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -131,7 +128,6 @@ jobs:
             -i ansible/ci-inventory.ini \
             ansible/playbook.yml
 
-      # 10. Report deployment result
+      # 8. Report deployment result
       - name: Deployment completed
-        run: |
-          echo "Ansible deployment completed successfully."
+        run: echo "Ansible deployment completed successfully."
