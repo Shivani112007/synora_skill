@@ -88,7 +88,7 @@ jobs:
 
           echo "SSH private key format is valid."
 
-      # 5. Configure Ansible inventory
+      # 5. Configure Ansible inventory for local SSH
       - name: Configure Ansible inventory
         shell: bash
         run: |
@@ -96,8 +96,11 @@ jobs:
 
           cat > ansible/ci-inventory.ini <<EOF
           [synora_servers]
-          synora_ec2 ansible_host=${EC2_HOST} ansible_user=${EC2_USER} ansible_python_interpreter=/usr/bin/python3 ansible_ssh_private_key_file=$HOME/.ssh/synora_ec2
+          synora_ec2 ansible_host=127.0.0.1 ansible_user=${EC2_USER} ansible_python_interpreter=/usr/bin/python3 ansible_ssh_private_key_file=$HOME/.ssh/synora_ec2
           EOF
+
+          ssh-keyscan -H 127.0.0.1 >> "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
 
       # 6. Test the Ansible connection
       - name: Test Ansible connection
