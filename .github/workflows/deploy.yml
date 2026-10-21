@@ -100,6 +100,9 @@ jobs:
               # Fast-forward without discarding local changes.
               "sudo -u ec2-user git -C /var/www/synora merge --ff-only origin/main",
 
+              # Install Python dependencies before Puppet or application restart.
+              "sudo -u ec2-user /var/www/synora/venv/bin/pip install -r /var/www/synora/requirements.txt",
+
               # Install and validate the Puppet manifest.
               f"install -D -m 0644 {app_dir}/puppet/manifests/synora.pp {manifest}",
               f"/opt/puppetlabs/bin/puppet parser validate {manifest}",
