@@ -2,6 +2,9 @@
 name: Synora Ansible Deployment
 
 on:
+  push:
+    branches:
+      - ansible-scm
   workflow_dispatch:
 
 permissions:
