@@ -1,7 +1,9 @@
 """SYNORA Flask application factory and shared helpers."""
 import os
 from datetime import date, datetime
+
 from flask import Flask, render_template
+
 from app.config import Config
 from app.models import Store
 
@@ -54,4 +56,12 @@ def page(template_name, title="SYNORA", **ctx):
     return render_template("base.html", title=title, body=body, u=me())
 
 # Import route modules to register their URL rules.
-from app.routes import public_routes, auth_routes, student_routes, opportunity_routes, application_routes, admin_routes, document_routes  # noqa: E402,F401
+from app.routes import (  # noqa: F401
+    admin_routes,
+    application_routes,
+    auth_routes,
+    document_routes,
+    opportunity_routes,
+    public_routes,
+    student_routes,
+)

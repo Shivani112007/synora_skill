@@ -1,5 +1,11 @@
 import os
 
+from dotenv import load_dotenv
+
+# Load .env from the project root
+load_dotenv()
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@portal.com").lower()
