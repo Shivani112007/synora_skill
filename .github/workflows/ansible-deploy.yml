@@ -29,6 +29,7 @@ jobs:
       # 2. Install Ansible
       - name: Install Ansible
         run: |
+          set -euo pipefail
           python3 -m pip install --user ansible
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
@@ -58,6 +59,7 @@ jobs:
 
       # 4. Configure SSH authentication
       - name: Configure SSH
+        id: configure_ssh
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
@@ -69,14 +71,13 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/synora_ec2"
           chmod 600 "$HOME/.ssh/synora_ec2"
 
-          # Check that the private key can be read.
-          ssh-keygen -y -f "$HOME/.ssh/synora_ec2" \
-            > /dev/null
+          ssh-keygen -y -f "$HOME/.ssh/synora_ec2" > /dev/null
 
           echo "SSH private key format is valid."
 
       # 5. Check EC2 SSH port reachability
       - name: Check EC2 SSH connectivity
+        id: check_ssh
         run: |
           set -euo pipefail
 
@@ -91,8 +92,8 @@ jobs:
 
           echo "EC2 SSH port is reachable."
 
-      # 6. Verify EC2 host key
-      # For production, replace this with a trusted, pinned host key.
+      # 6. Configure known hosts
+      # For production, use a trusted, pinned host key.
       - name: Configure known hosts
         run: |
           set -euo pipefail
@@ -124,6 +125,7 @@ jobs:
 
       # 9. Run the Ansible playbook
       - name: Deploy Synora services
+        id: ansible_deploy
         run: |
           set -euo pipefail
 
@@ -133,5 +135,54 @@ jobs:
 
       # 10. Report deployment result
       - name: Deployment completed
+        if: steps.ansible_deploy.outcome == 'success'
         run: |
           echo "Ansible deployment completed successfully."
+
+      # 11. Log deployment result to EC2 for CloudWatch collection
+      - name: Log deployment result to CloudWatch
+        if: always() && steps.configure_ssh.outcome == 'success' && steps.check_ssh.outcome == 'success'
+        env:
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+          DEPLOY_RESULT: ${{ steps.ansible_deploy.outcome }}
+        run: |
+          set -euo pipefail
+
+          export DEPLOY_TIMESTAMP
+          DEPLOY_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 - <<'PY' > deployment-event.json
+          import json
+          import os
+
+          event = {
+              "timestamp": os.environ["DEPLOY_TIMESTAMP"],
+              "tool": "ansible",
+              "branch": os.environ["DEPLOY_BRANCH"],
+              "commit": os.environ["DEPLOY_COMMIT"],
+              "status": (
+                  "success"
+                  if os.environ["DEPLOY_RESULT"] == "success"
+                  else "failure"
+              )
+          }
+
+          with open("deployment-event.json", "w") as f:
+              json.dump(event, f)
+          PY
+
+          EVENT_B64=$(base64 -w 0 deployment-event.json)
+
+          REMOTE_COMMAND="echo '$EVENT_B64' | base64 -d | sudo tee -a /var/log/synora-deployments.log >/dev/null"
+
+          if ssh \
+            -i "$HOME/.ssh/synora_ec2" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$EC2_USER@$EC2_HOST" \
+            "$REMOTE_COMMAND"; then
+            echo "Ansible deployment event written to EC2 log file."
+          else
+            echo "::warning::Could not write the Ansible deployment event to EC2."
+          fi
