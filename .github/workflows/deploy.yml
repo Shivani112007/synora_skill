@@ -48,6 +48,7 @@ jobs:
 
       # 3. Authenticate to AWS using GitHub OIDC
       - name: Configure AWS credentials
+        id: aws_credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -57,7 +58,7 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      # 5. Validate the Puppet manifest
+      # 5. Validate the Puppet manifest exists
       - name: Validate Puppet manifest exists
         run: |
           set -euo pipefail
@@ -85,8 +86,6 @@ jobs:
 
           commands = [
               "set -eu",
-
-              # Run commands as the application repository owner.
               "cd /var/www/synora",
               "sudo -u ec2-user git -C /var/www/synora fetch origin main",
 
@@ -94,28 +93,31 @@ jobs:
               "if ! sudo -u ec2-user git -C /var/www/synora diff --quiet || ! sudo -u ec2-user git -C /var/www/synora diff --cached --quiet; then echo 'ERROR: Local tracked changes exist in /var/www/synora.'; exit 1; fi",
               "if [ -n \"$(sudo -u ec2-user git -C /var/www/synora ls-files --others --exclude-standard)\" ]; then echo 'ERROR: Untracked files exist in /var/www/synora.'; exit 1; fi",
 
-              # Only allow deployment of a commit present in origin/main.
+              # Only deploy a commit present in origin/main.
               f"sudo -u ec2-user git -C /var/www/synora merge-base --is-ancestor {commit} origin/main",
 
               # Fast-forward without discarding local changes.
               "sudo -u ec2-user git -C /var/www/synora merge --ff-only origin/main",
 
-              # Install and validate the Puppet manifest.
+              # Install Python dependencies.
+              "sudo -u ec2-user /var/www/synora/venv/bin/pip install -r /var/www/synora/requirements.txt",
+
+              # Install and validate Puppet manifest.
               f"install -D -m 0644 {app_dir}/puppet/manifests/synora.pp {manifest}",
               f"/opt/puppetlabs/bin/puppet parser validate {manifest}",
 
               # Apply configuration management.
               f"/opt/puppetlabs/bin/puppet apply {manifest}",
 
-              # Restart the application and verify required services.
+              # Restart and verify services.
               "sudo systemctl restart synora",
               "sudo systemctl is-active --quiet synora",
               "sudo systemctl is-active --quiet nginx",
 
-              # Retry the application health check for up to 60 seconds.
+              # Check application health.
               "for attempt in $(seq 1 12); do if curl --fail --silent --show-error http://127.0.0.1:8000/ > /dev/null; then echo 'Synora is responding successfully.'; break; fi; if [ \"$attempt\" -eq 12 ]; then echo 'ERROR: Synora did not become ready in time.'; sudo systemctl status synora --no-pager -l || true; sudo journalctl -u synora -n 40 --no-pager || true; exit 1; fi; sleep 5; done",
 
-              # Verify the Nginx endpoint as well.
+              # Verify Nginx endpoint.
               "curl --fail --silent --show-error http://127.0.0.1/ > /dev/null",
 
               "echo 'Synora deployment completed successfully.'"
@@ -126,6 +128,7 @@ jobs:
           )
 
           COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy Synora commit ${COMMIT_SHA}" \
@@ -143,6 +146,7 @@ jobs:
 
       # 7. Wait for SSM to finish and report the result
       - name: Wait for deployment result
+        id: deployment_result
         env:
           COMMAND_ID: ${{ steps.ssm.outputs.command_id }}
         run: |
@@ -182,3 +186,55 @@ jobs:
 
           echo "ERROR: Timed out waiting for SSM."
           exit 1
+
+      # 8. Record deployment outcome in the EC2 deployment log
+      - name: Log deployment result to CloudWatch
+        if: always() && steps.aws_credentials.outcome == 'success'
+        env:
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+          DEPLOY_RESULT: ${{ steps.deployment_result.outcome }}
+        run: |
+          set -euo pipefail
+
+          export DEPLOY_TIMESTAMP
+          DEPLOY_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 - <<'PY' > deployment-event.json
+          import json
+          import os
+
+          result = os.environ["DEPLOY_RESULT"]
+
+          event = {
+              "timestamp": os.environ["DEPLOY_TIMESTAMP"],
+              "tool": "puppet",
+              "branch": os.environ["DEPLOY_BRANCH"],
+              "commit": os.environ["DEPLOY_COMMIT"],
+              "status": "success" if result == "success" else "failure"
+          }
+
+          with open("deployment-event.json", "w") as f:
+              json.dump(event, f)
+          PY
+
+          EVENT_B64=$(base64 -w 0 deployment-event.json)
+
+          REMOTE_COMMAND="echo '$EVENT_B64' | base64 -d | sudo tee -a /var/log/synora-deployments.log >/dev/null"
+
+          PARAMETERS=$(python3 -c \
+            'import json,sys; print(json.dumps({"commands":[sys.argv[1]]}))' \
+            "$REMOTE_COMMAND")
+
+          if COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Log Puppet deployment result ${DEPLOY_COMMIT}" \
+            --parameters "$PARAMETERS" \
+            --query 'Command.CommandId' \
+            --output text); then
+            echo "Deployment event submitted to EC2. SSM command: $COMMAND_ID"
+          else
+            echo "::warning::Could not submit the deployment event to EC2."
+          fi

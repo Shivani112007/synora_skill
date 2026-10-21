@@ -1,3 +1,18 @@
-<div class="login-wrap"><div class="login-card"><span class="eyebrow">Start your profile</span><h1 style="margin-top:15px">Create your SYNORA account</h1><p>Build once. Showcase everywhere. Discover what fits you.</p>
-<form method=post><div class="field"><label>Full name</label><input name=name required placeholder="Your name"></div><div class="field"><label>Email</label><input name=email type=email required placeholder="you@example.com"></div><div class="field"><label>Password</label><input name=password type=password minlength=6 required placeholder="At least 6 characters"></div><div class="form-actions"><button class="btn btn-primary" style="width:100%">Create account →</button></div></form>
-<p style="text-align:center;font-size:13px">Already registered? <a style="color:var(--brand);font-weight:800" href="{{ url_for('login') }}">Sign in</a></p></div></div>
+<div class="login-wrap">
+    <div class="login-card"><span class="eyebrow">Start your profile</span>
+        <h1 style="margin-top:15px">Create your SYNORA account</h1>
+        <p>Build once. Showcase everywhere. Discover what fits you.</p>
+        <form method=post>
+            <div class="field"><label for="register-name">Full name</label><input id="register-name" name=name
+                    autocomplete=name required placeholder="Your name..."></div>
+            <div class="field"><label for="register-email">Email</label><input id="register-email" name=email type=email
+                    autocomplete=email required placeholder="you@example.com..."></div>
+            <div class="field"><label for="register-password">Password</label><input id="register-password"
+                    name=password type=password autocomplete=new-password minlength=6 required
+                    placeholder="At least 6 characters"></div>
+            <div class="form-actions"><button class="btn btn-primary" style="width:100%">Create account →</button></div>
+        </form>
+        <p style="text-align:center;font-size:13px">Already registered? <a style="color:var(--brand);font-weight:800"
+                href="{{ url_for('login') }}">Sign in</a></p>
+    </div>
+</div>
