@@ -12,10 +12,9 @@ jmespath==1.1.0
 MarkupSafe==3.0.4
 packaging==26.3
 python-dateutil==2.9.0.post0
-python-dotenv==1.2.4
+python-dotenv==1.2.1
 s3transfer==0.16.1
 six==1.17.0
 urllib3==1.26.20
 Werkzeug==3.1.9
 zipp==3.23.1
-
